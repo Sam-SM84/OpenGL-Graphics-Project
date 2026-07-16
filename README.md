@@ -1,2 +1,2 @@
 # OpenGL-Graphics-Project
-Working on a 3D game as a beginner (check Joey de Vries)
+Working on a 3D game as a beginner (check JoeyDeVries)
