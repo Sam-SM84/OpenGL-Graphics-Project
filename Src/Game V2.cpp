@@ -1,14 +1,6 @@
-
-
-//#include <glad/glad.h>
-//#include <GLFW/glfw3.h>
-
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-
-//#include <iostream>
-//#include <vector>
 
 #include "commonLibraries.h"
 #include "stbDefinition.h"
@@ -18,6 +10,7 @@
 #include <random>
 #include "Object.h"
 #include "Skybox.h"
+#include "Gridbox.h"
 
 void reshapeScreen(GLFWwindow* window, int width, int height);
 void mouseMotion(GLFWwindow* window, double xpos, double ypos);
@@ -28,12 +21,8 @@ void displayTitle(GLFWwindow* window,float dt);
 void mouseFunc(GLFWwindow* window, int button, int action, int mods);
 bool wait(float time,float dt);
 
-// settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
-
-// camera
-//glm::vec3 player.direction = glm::vec3(0.0f, 0.0f, -1.0f);
 
 Figure player = Figure({ 0.0f, 0.0f, 3.0f });
 
@@ -54,6 +43,8 @@ bool pressed = false;
 float renderDistance = 50.0f;
 
 const float nearDistance = 30.0f;
+
+bool inventory = true;
 
 vector<Object> objects;
 vector<Object> visibleObjects;
@@ -99,12 +90,11 @@ int main()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    //glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-    //GLFWcursor* cursor = glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
-    //glfwSetCursor(window, cursor);
+
 
     Shader modelShader("model_loading.vs", "model_loading.fs");
     Shader skyboxShader("skybox.vs", "skybox.fs");
+    Shader gridShader("gridShader.vs", "gridShader.fs");
 
     vector<string> faces
     {
@@ -164,6 +154,9 @@ int main()
     skyboxShader.use();
     skyboxShader.setInt("skybox", 0);
 
+    player.bag.setup();
+
+
     while (!glfwWindowShouldClose(window))
     {
         float dt = getRealTime(t1, t2);
@@ -173,42 +166,63 @@ int main()
         glClearColor(0.0f,0.0f,0.0f, 0.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        modelShader.use();
-
-        glm::mat4 projection = glm::perspective(glm::radians(FOV), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, renderDistance);
-        glm::mat4 view = glm::lookAt(player.Position,
-            { player.Position.x + player.direction.x * cos(glm::radians(pitch)),
-            player.Position.y + player.direction.y,
-            player.Position.z + player.direction.z * cos(glm::radians(pitch)) }
-        , { 0.0f,1.0f,0.0f });
-        modelShader.setMat4("projection", projection);
-        modelShader.setMat4("view", view);
-        
-
-        float limitAngle = glm::cos(glm::radians(FOV + 10.0f)) - 0.05f;
-        visibleObjects.clear();
-
-        // Frustum culling Optimization
-        for (auto obj = objects.begin(); obj != objects.end(); obj++)
+        glm::mat4 projection, view, model;
+        if (inventory)
         {
-            glm::vec3 objectVector = glm::normalize(obj->modelPosition - player.Position);
-            if (glm::dot(glm::normalize(player.direction), objectVector) > limitAngle || glm::distance(player.Position,obj->modelPosition) < obj->radius) 
-                visibleObjects.push_back(*obj);
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            modelShader.use();
+            projection = glm::perspective(glm::radians(FOV), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, renderDistance);
+            view = glm::lookAt(player.Position,
+                { player.Position.x + player.direction.x * cos(glm::radians(pitch)),
+                player.Position.y + player.direction.y,
+                player.Position.z + player.direction.z * cos(glm::radians(pitch)) }
+            , { 0.0f,1.0f,0.0f });
+            modelShader.setMat4("projection", projection);
+            modelShader.setMat4("view", view);
+
+            float limitAngle = glm::cos(glm::radians(FOV + 10.0f)) - 0.05f;
+            visibleObjects.clear();
+
+            // Frustum culling Optimization
+            for (auto obj = objects.begin(); obj != objects.end(); obj++)
+            {
+                glm::vec3 objectVector = glm::normalize(obj->modelPosition - player.Position);
+                if (glm::dot(glm::normalize(player.direction), objectVector) > limitAngle || glm::distance(player.Position, obj->modelPosition) < obj->radius)
+                    visibleObjects.push_back(*obj);
+            }
+
+            for (auto obj = visibleObjects.begin(); obj != visibleObjects.end(); obj++)
+            {
+                // Level Of Detail Optimization
+                obj->drawObject(modelShader, glm::distance(player.Position, obj->modelPosition) < nearDistance);
+            }
         }
 
-        for (auto obj = visibleObjects.begin(); obj != visibleObjects.end(); obj++)
+        else
         {
-            // Level Of Detail Optimization
-            obj->drawObject(modelShader, glm::distance(player.Position, obj->modelPosition) < nearDistance); 
-        }
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            GLFWcursor* cursor = glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
+            glfwSetCursor(window, cursor);
+
+            gridShader.use();
+            projection = glm::ortho(0.0f, (float)SCR_WIDTH, 0.0f, (float)SCR_HEIGHT);
+            gridShader.setMat4("projection", projection);
+            model = glm::translate(glm::mat4(1.0f), glm::vec3(10, 10, 0));
+
+            gridShader.setMat4("model", model);
+            gridShader.setVec3("Inputcolor", glm::vec3(1.0f, 0.0f, 0.0f));
             
+            player.bag.draw(gridShader);
+            
+        }
 
         if(wait(0.512f,dt)) displayTitle(window, dt);
 
 
         skybox.drawSkybox(skyboxShader, glm::mat4(glm::mat3(view)), projection);
         
-        
+
+
         glfwPollEvents();
         glfwSwapBuffers(window);
     }
@@ -221,6 +235,10 @@ void movement_and_IO(GLFWwindow* window, float dt)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS && !pressed) {
+        inventory = !inventory; pressed = true;
+    }
 
     glm::vec3 futurePosition = { 0,0,0 };
     float cameraSpeed = (5 * dt);
@@ -238,6 +256,8 @@ void movement_and_IO(GLFWwindow* window, float dt)
 
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         futurePosition += glm::vec3( player.direction.z * cameraSpeed * -1, 0, player.direction.x * cameraSpeed );
+
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_RELEASE && pressed) pressed = false;
 
 
     player.moveFigure({ futurePosition.x,0,futurePosition.z });
