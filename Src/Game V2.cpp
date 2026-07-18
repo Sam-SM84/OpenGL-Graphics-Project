@@ -44,7 +44,7 @@ float renderDistance = 50.0f;
 
 const float nearDistance = 30.0f;
 
-bool inventory = true;
+bool inventory = false;
 
 vector<Object> objects;
 vector<Object> visibleObjects;
@@ -89,8 +89,6 @@ int main()
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-
 
     Shader modelShader("model_loading.vs", "model_loading.fs");
     Shader skyboxShader("skybox.vs", "skybox.fs");
@@ -138,7 +136,6 @@ int main()
     for (int i = 0; i < 25; i++)
         objects.push_back(Object(&tree, { getRandom1f(0,50),-0.9f,getRandom1f(0,50)}, {1.0f,getRandom1f(0.8f,1.4f),1.0f}, {0.0f,getRandom1f(0.0f,180.0f),0.0f},false,true));
 
-    
     for (int i = 0; i < 25; i++)
         objects.push_back(Object(&crocus, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 0.015f,0.015f,0.01f }, { -90.0f,0.0f,0.0f },true,true));
 
@@ -154,8 +151,7 @@ int main()
     skyboxShader.use();
     skyboxShader.setInt("skybox", 0);
 
-    player.bag.setup();
-
+    Gridbox::initialize();
 
     while (!glfwWindowShouldClose(window))
     {
@@ -167,7 +163,8 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glm::mat4 projection, view, model;
-        if (inventory)
+
+        if (!inventory)
         {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
             modelShader.use();
@@ -205,24 +202,23 @@ int main()
             glfwSetCursor(window, cursor);
 
             gridShader.use();
+
             projection = glm::ortho(0.0f, (float)SCR_WIDTH, 0.0f, (float)SCR_HEIGHT);
             gridShader.setMat4("projection", projection);
-            model = glm::translate(glm::mat4(1.0f), glm::vec3(10, 10, 0));
 
-            gridShader.setMat4("model", model);
-            gridShader.setVec3("Inputcolor", glm::vec3(1.0f, 0.0f, 0.0f));
-            
-            player.bag.draw(gridShader);
-            
+            for (int i = 0; i < 5; i++)
+            {
+                if (player.bag[i].hovers(lastMouseX, SCR_HEIGHT - lastMouseY)) gridShader.setVec3("Inputcolor", player.bag[i].color);
+                else gridShader.setVec3("Inputcolor", glm::vec3(0.0f, 0.0f, 1.0f));
+
+                player.bag[i].draw(gridShader);
+            }
         }
 
-        if(wait(0.512f,dt)) displayTitle(window, dt);
-
+        if(wait(0.5f,dt)) displayTitle(window, dt);
 
         skybox.drawSkybox(skyboxShader, glm::mat4(glm::mat3(view)), projection);
         
-
-
         glfwPollEvents();
         glfwSwapBuffers(window);
     }
@@ -285,26 +281,30 @@ void mouseMotion(GLFWwindow* window, double xposIn, double yposIn)
 
     float dx = currentMouseX - lastMouseX;
     float dy = lastMouseY - currentMouseY; // reversed since y-coordinates go from bottom to top
+
     lastMouseX = currentMouseX;
     lastMouseY = currentMouseY;
 
-    float sensitivity = 0.1f; 
+    if (!inventory)
+    {
+        float sensitivity = 0.1f;
 
-    yaw += dx * sensitivity;
-    pitch += dy * sensitivity;
+        yaw += dx * sensitivity;
+        pitch += dy * sensitivity;
 
-    if (pitch > 89.0) pitch = 89.0f;
-    if (pitch < -89.0) pitch = -89.0f;
+        if (pitch > 89.0) pitch = 89.0f;
+        if (pitch < -89.0) pitch = -89.0f;
 
-    if (yaw > 360) yaw -= 360;
-    if (yaw < 0) yaw += 360;
+        if (yaw > 360) yaw -= 360;
+        if (yaw < 0) yaw += 360;
 
-    glm::vec3 reverse_direction;
-    reverse_direction.x = cos(glm::radians(yaw));
-    reverse_direction.y = sin(glm::radians(pitch));
-    reverse_direction.z = sin(glm::radians(yaw));
+        glm::vec3 reverse_direction;
+        reverse_direction.x = cos(glm::radians(yaw));
+        reverse_direction.y = sin(glm::radians(pitch));
+        reverse_direction.z = sin(glm::radians(yaw));
 
-    player.direction = glm::normalize(reverse_direction);
+        player.direction = glm::normalize(reverse_direction);
+    }
 }
 
 float getRealTime(float& t1, float& t2)
