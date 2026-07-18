@@ -4,7 +4,7 @@
 #define FIGURE_H
 
 #include <glm/glm.hpp>
-
+#include "Gridbox.h"
 class Figure
 {
 
@@ -12,14 +12,24 @@ public:
 	glm::vec3 Position;
 	glm::vec3 speed;
 	glm::vec3 direction;
+
+	Gridbox bag[5];
 	bool onAir;
+
 	Figure(glm::vec3 p)
 	{
 		Position = p;
 		speed = { 0,0,0 };
 		onAir = false;
+
+		for (int i = 0; i < 5; i++)
+		{
+			bag[i].setup(glm::vec2(200 + 75 * i, 200), glm::vec2(250 + 75 * i, 250), glm::vec3(1, 0, 0));
+		}
 	}
+
 	Figure(){}
+
 	void moveFigure(glm::vec3 move)
 	{
 		Position.x += move.x;
