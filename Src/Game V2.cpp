@@ -10,19 +10,19 @@
 #include <random>
 #include "Object.h"
 #include "Skybox.h"
-#include "Gridbox.h"
+#include "InventorySlot.h"
 
 void reshapeScreen(GLFWwindow* window, int width, int height);
 void mouseMotion(GLFWwindow* window, double xpos, double ypos);
 void movement_and_IO(GLFWwindow* window, float dt);
 float getRealTime(float& t1, float& t2);
 float getRandom1f(float min, float max);
-void displayTitle(GLFWwindow* window,float dt);
+void displayTitle(GLFWwindow* window, float dt);
 void mouseFunc(GLFWwindow* window, int button, int action, int mods);
-bool wait(float time,float dt);
+bool wait(float time, float dt);
 
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+unsigned int SCR_WIDTH = 800;
+unsigned int SCR_HEIGHT = 600;
 
 Figure player = Figure({ 0.0f, 0.0f, 3.0f });
 
@@ -73,7 +73,7 @@ int main()
     glfwSetFramebufferSizeCallback(window, reshapeScreen);
     glfwSetCursorPosCallback(window, mouseMotion);
     glfwSetMouseButtonCallback(window, mouseFunc);
-    
+
 
     // tell GLFW to capture our mouse
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -131,19 +131,21 @@ int main()
 
     for (int i = 0; i < 10; i++)
         for (int j = 0; j < 10; j++)
-            objects.push_back(Object(&grassPath,{ 0.0f + (float)i * 5,-1.0f,0.0f + (float)j * 5}, {0.05f,0.01f,0.05f}, {-90.0f,0.0f,0.0f},false,false));
+        {
+            objects.push_back(Object(&grassPath, { 0.0f + (float)i * 5,-1.0f,0.0f + (float)j * 5 }, { 0.05f,0.01f,0.05f }, { -90.0f,0.0f,0.0f}, false, false));
+        }
 
     for (int i = 0; i < 25; i++)
-        objects.push_back(Object(&tree, { getRandom1f(0,50),-0.9f,getRandom1f(0,50)}, {1.0f,getRandom1f(0.8f,1.4f),1.0f}, {0.0f,getRandom1f(0.0f,180.0f),0.0f},false,true));
+        objects.push_back(Object(&tree, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 1.0f,getRandom1f(0.8f,1.4f),1.0f }, { 0.0f,getRandom1f(0.0f,180.0f),0.0f }, false, true));
 
     for (int i = 0; i < 25; i++)
-        objects.push_back(Object(&crocus, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 0.015f,0.015f,0.01f }, { -90.0f,0.0f,0.0f },true,true));
+        objects.push_back(Object(&crocus, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 0.015f,0.015f,0.01f }, { -90.0f,0.0f,0.0f }, true, true));
 
-    for(int i=0;i<120;i++)
-        objects.push_back(Object(&tulip, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 0.025f,0.025f,0.025f }, { -90.0f,0.0f,0.0f },false,true));
+    for (int i = 0; i < 120; i++)
+        objects.push_back(Object(&tulip, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 0.025f,0.025f,0.025f }, { -90.0f,0.0f,0.0f }, false, true));
 
     for (int j = 0; j < 50; j++)
-        objects.push_back(Object(&grass, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 3.0f,3.0 * getRandom1f(0.8,1.3),3.0f}, {0.0f,0.0f,0.0f}, false,true));
+        objects.push_back(Object(&grass, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 3.0f,3.0 * getRandom1f(0.8,1.3),3.0f }, { 0.0f,0.0f,0.0f }, false, true));
 
     for (int j = 0; j < 50; j++)
         objects.push_back(Object(&rock, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 0.1f,0.1f,0.1f }, { 0.0f,0.0f,0.0f }, false, true));
@@ -151,7 +153,7 @@ int main()
     skyboxShader.use();
     skyboxShader.setInt("skybox", 0);
 
-    Gridbox::initialize();
+    InventorySlot::initialize("Images/slot1.png");
 
     while (!glfwWindowShouldClose(window))
     {
@@ -159,7 +161,7 @@ int main()
         movement_and_IO(window, dt);
         player.applyGravity(groundLevel, 0.98, dt);
 
-        glClearColor(0.0f,0.0f,0.0f, 0.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glm::mat4 projection, view, model;
@@ -208,17 +210,14 @@ int main()
 
             for (int i = 0; i < 5; i++)
             {
-                if (player.bag[i].hovers(lastMouseX, SCR_HEIGHT - lastMouseY)) gridShader.setVec3("Inputcolor", player.bag[i].color);
-                else gridShader.setVec3("Inputcolor", glm::vec3(0.0f, 0.0f, 1.0f));
-
                 player.bag[i].draw(gridShader);
             }
         }
 
-        if(wait(0.5f,dt)) displayTitle(window, dt);
+        if (wait(0.5f, dt)) displayTitle(window, dt);
 
         skybox.drawSkybox(skyboxShader, glm::mat4(glm::mat3(view)), projection);
-        
+
         glfwPollEvents();
         glfwSwapBuffers(window);
     }
@@ -242,16 +241,16 @@ void movement_and_IO(GLFWwindow* window, float dt)
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) cameraSpeed *= 2;
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        futurePosition += glm::vec3(cameraSpeed * player.direction.x ,0,cameraSpeed * player.direction.z );
-    
+        futurePosition += glm::vec3(cameraSpeed * player.direction.x, 0, cameraSpeed * player.direction.z);
+
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        futurePosition += glm::vec3( cameraSpeed * player.direction.x * -1 ,0,cameraSpeed * player.direction.z * -1 );
+        futurePosition += glm::vec3(cameraSpeed * player.direction.x * -1, 0, cameraSpeed * player.direction.z * -1);
 
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        futurePosition += glm::vec3( player.direction.z * cameraSpeed, 0, player.direction.x * cameraSpeed * -1 );
+        futurePosition += glm::vec3(player.direction.z * cameraSpeed, 0, player.direction.x * cameraSpeed * -1);
 
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        futurePosition += glm::vec3( player.direction.z * cameraSpeed * -1, 0, player.direction.x * cameraSpeed );
+        futurePosition += glm::vec3(player.direction.z * cameraSpeed * -1, 0, player.direction.x * cameraSpeed);
 
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_RELEASE && pressed) pressed = false;
 
@@ -264,6 +263,8 @@ void movement_and_IO(GLFWwindow* window, float dt)
 
 void reshapeScreen(GLFWwindow* window, int width, int height)
 {
+    SCR_HEIGHT = height;
+    SCR_WIDTH = width;
     glViewport(0, 0, width, height);
 }
 
@@ -323,7 +324,7 @@ float getRandom1f(float min, float max)
     return dist(gen);
 }
 
-void displayTitle(GLFWwindow* window,float dt)
+void displayTitle(GLFWwindow* window, float dt)
 {
     std::string fpsText = "Fps : " + std::to_string((int)(1.0f / dt));
     glfwSetWindowTitle(window, fpsText.c_str());
@@ -334,7 +335,7 @@ void mouseFunc(GLFWwindow* window, int button, int action, int mods)
 
 }
 
-bool wait(float timeDuration,float dt)
+bool wait(float timeDuration, float dt)
 {
     if (duration < timeDuration)
     {
