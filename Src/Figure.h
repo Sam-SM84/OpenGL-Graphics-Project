@@ -21,11 +21,6 @@ public:
 		Position = p;
 		speed = { 0,0,0 };
 		onAir = false;
-
-		for (int i = 0; i < 5; i++)
-		{
-			bag[i].setup(glm::vec2(200 + 75 * i, 200), glm::vec2(250 + 75 * i, 250), glm::vec3(1, 0, 0));
-		}
 	}
 
 	Figure(){}
