@@ -11,6 +11,7 @@
 #include "Object.h"
 #include "Skybox.h"
 #include "InventorySlot.h"
+#include "Item.h"
 
 void reshapeScreen(GLFWwindow* window, int width, int height);
 void mouseMotion(GLFWwindow* window, double xpos, double ypos);
@@ -51,8 +52,7 @@ vector<Object> visibleObjects;
 
 int main()
 {
-    // glfw: initialize and configure
-    // ------------------------------
+                                            // Initialize
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -69,13 +69,12 @@ int main()
         glfwTerminate();
         return -1;
     }
+                                           // Functions
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, reshapeScreen);
     glfwSetCursorPosCallback(window, mouseMotion);
     glfwSetMouseButtonCallback(window, mouseFunc);
 
-
-    // tell GLFW to capture our mouse
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     // glad: load all OpenGL function pointers
@@ -90,10 +89,12 @@ int main()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+                                            // Shaders
     Shader modelShader("model_loading.vs", "model_loading.fs");
     Shader skyboxShader("skybox.vs", "skybox.fs");
     Shader gridShader("gridShader.vs", "gridShader.fs");
 
+                                            // Skybox Initialization
     vector<string> faces
     {
         "skybox/px.png",
@@ -105,7 +106,10 @@ int main()
     };
 
     Skybox skybox(faces);
+    skyboxShader.use();
+    skyboxShader.setInt("skybox", 0);
 
+                                            // Initializing Models
     Model grassPath_near("Models/grass/10450_Rectangular_Grass_Patch_v1_iterations-2.obj");
     Model grassPath_far("Models/grass/ratio_0.1.obj");
     LODmodel grassPath{ &grassPath_far,&grassPath_near };
@@ -129,6 +133,7 @@ int main()
     Model rock_("Models/rock/Rock1.obj");
     LODmodel rock{ &rock_,&rock_ };
 
+                                            // Adding Objects into the world
     for (int i = 0; i < 10; i++)
         for (int j = 0; j < 10; j++)
         {
@@ -150,11 +155,20 @@ int main()
     for (int j = 0; j < 50; j++)
         objects.push_back(Object(&rock, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 0.1f,0.1f,0.1f }, { 0.0f,0.0f,0.0f }, false, true));
 
-    skyboxShader.use();
-    skyboxShader.setInt("skybox", 0);
 
+                                            // Inventory setup
     InventorySlot::initialize("Images/slot1.png");
 
+    Item sth(1, "Images/redx.png");
+    Item null(0, "Images/redx.png");
+    for (int i = 0; i < 5; i++)
+    {
+        player.bag[i].setup(&null, 1, glm::vec2(200 + 75 * i, 200), glm::vec2(250 + 75 * i, 250));
+    }
+
+    player.bag[2].setItem(&sth, 1);
+
+                                            // Main loop
     while (!glfwWindowShouldClose(window))
     {
         float dt = getRealTime(t1, t2);
@@ -210,7 +224,7 @@ int main()
 
             for (int i = 0; i < 5; i++)
             {
-                player.bag[i].draw(gridShader);
+                player.bag[i].draw(gridShader, lastMouseX, SCR_HEIGHT - lastMouseY);
             }
         }
 
@@ -234,31 +248,33 @@ void movement_and_IO(GLFWwindow* window, float dt)
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS && !pressed) {
         inventory = !inventory; pressed = true;
     }
-
-    glm::vec3 futurePosition = { 0,0,0 };
-    float cameraSpeed = (5 * dt);
-
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) cameraSpeed *= 2;
-
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        futurePosition += glm::vec3(cameraSpeed * player.direction.x, 0, cameraSpeed * player.direction.z);
-
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        futurePosition += glm::vec3(cameraSpeed * player.direction.x * -1, 0, cameraSpeed * player.direction.z * -1);
-
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        futurePosition += glm::vec3(player.direction.z * cameraSpeed, 0, player.direction.x * cameraSpeed * -1);
-
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        futurePosition += glm::vec3(player.direction.z * cameraSpeed * -1, 0, player.direction.x * cameraSpeed);
-
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_RELEASE && pressed) pressed = false;
 
+    if (!inventory)
+    {
+        glm::vec3 futurePosition = { 0,0,0 };
+        float cameraSpeed = (5 * dt);
 
-    player.moveFigure({ futurePosition.x,0,futurePosition.z });
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !player.onAir) player.jump();
+        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) cameraSpeed *= 2;
 
-    //if (pressed) pressed = false;
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+            futurePosition += glm::vec3(cameraSpeed * player.direction.x, 0, cameraSpeed * player.direction.z);
+
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+            futurePosition += glm::vec3(cameraSpeed * player.direction.x * -1, 0, cameraSpeed * player.direction.z * -1);
+
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+            futurePosition += glm::vec3(player.direction.z * cameraSpeed, 0, player.direction.x * cameraSpeed * -1);
+
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+            futurePosition += glm::vec3(player.direction.z * cameraSpeed * -1, 0, player.direction.x * cameraSpeed);
+
+        
+
+
+        player.moveFigure({ futurePosition.x,0,futurePosition.z });
+        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !player.onAir) player.jump();
+    }
 }
 
 void reshapeScreen(GLFWwindow* window, int width, int height)
