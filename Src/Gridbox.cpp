@@ -3,7 +3,7 @@
 unsigned int InventorySlot::VAO = 0;
 unsigned int InventorySlot::VBO = 0;
 unsigned int InventorySlot::EBO = 0;
-unsigned int InventorySlot::textureID = 0;
+unsigned int InventorySlot::slotTexture = 0;
 
 unsigned int InventorySlot::indeces[]
 {
@@ -22,11 +22,10 @@ float InventorySlot::vertices[] =
 
 InventorySlot::InventorySlot()
 {
-    itemID = 0;
+    item = nullptr;
     count = 0;
     minPos = glm::vec2(0,0);
     maxPos = glm::vec2(0,0);
-    color =  glm::vec3(0,0,0);
 }
 
 void InventorySlot::initialize(const char* path)
@@ -53,7 +52,7 @@ void InventorySlot::initialize(const char* path)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    glGenTextures(1, &textureID);
+    glGenTextures(1, &slotTexture);
 
     int width, height, nrChannels;
     unsigned char* data = stbi_load(path, &width, &height, &nrChannels, 0);
@@ -65,7 +64,7 @@ void InventorySlot::initialize(const char* path)
         if (nrChannels == 3) format = GL_RGB;
         if (nrChannels == 4) format = GL_RGBA;
 
-        glBindTexture(GL_TEXTURE_2D, textureID);
+        glBindTexture(GL_TEXTURE_2D, slotTexture);
         //glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
@@ -81,42 +80,66 @@ void InventorySlot::initialize(const char* path)
 
     else
     {
-        std::cout << "Texture failed to load at path: " << path << std::endl;
+        std::cout << "Slot texture failed to load at path: " << path << std::endl;
         stbi_image_free(data);
     }
-
-    std::cout << "Loaded: " << path
-        << " width=" << width
-        << " height=" << height
-        << " channels=" << nrChannels << '\n';
 }
 
-void InventorySlot::setup(glm::vec2 min, glm::vec2 max, glm::vec3 _color)
+void InventorySlot::setup(Item* _item,unsigned int _count,glm::vec2 min, glm::vec2 max)
 {
-    itemID = 0;
-    count = 0;
+    item = _item;
+    count = _count;
     minPos = min;
     maxPos = max;
-    color = _color;
 }
 
-void InventorySlot::setItem(unsigned int _itemID, int _count)
+void InventorySlot::setItem(Item* _item, unsigned int _count)
 {
-	itemID = _itemID;
-	count = _count;
+    item = _item;
+    count = _count;
 }
 
-void InventorySlot::draw(Shader& shader)
+
+void InventorySlot::draw(Shader& shader,float mouseX,float mouseY)
 {
-    glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(minPos.x,minPos.y, 0));
-    model = glm::scale(model, glm::vec3(maxPos.x - minPos.x, maxPos.y - minPos.y, 1));
+    float scale = hovers(mouseX, mouseY) ? 3 : 1;
+
+    glm::mat4 model(1.0f);
+    model = glm::translate(model, glm::vec3(glm::vec2((maxPos + minPos) / 2.0f), 0.0f));  
+    model = glm::scale(model, glm::vec3((maxPos.x - minPos.x) * scale, (maxPos.y - minPos.y) * scale, 1));
+    model = glm::translate(model, glm::vec3(-0.5, -0.5, -0.5));
+
     shader.setMat4("model", model);
-    shader.setInt("texture_diffuse", 0);
+    shader.setInt("texture1", 0);
+    shader.setInt("texture2", 1);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, slotTexture);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, slotTexture);
+    if (item != nullptr && item->ID != 0)
+    {
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, item->itemTexture);
+    }
+
     glDisable(GL_DEPTH_TEST);
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, textureID);
+    
     glBindVertexArray(VAO);
+    glBindTexture(GL_TEXTURE_2D, slotTexture);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
     glBindVertexArray(0);
     glEnable(GL_DEPTH_TEST);
+}
+
+bool InventorySlot::hovers(float mouseX, float mouseY)
+{
+    return
+        (
+            mouseX > minPos.x && mouseX < maxPos.x&&
+            mouseY > minPos.y && mouseY < maxPos.y
+            );
 }
