@@ -2,26 +2,29 @@
 #include "commonLibraries.h"
 #include "shader.h"
 #include <glm/gtc/matrix_transform.hpp>
+#include "Item.h"
+
 class InventorySlot
 {
 public:
-	unsigned int itemID;
+	Item* item;
 	int count;
 	glm::vec2 maxPos;
 	glm::vec2 minPos;
-	glm::vec3 color;
 
-	InventorySlot(glm::vec2 min,glm::vec2 max,glm::vec3 _color);
+	InventorySlot(glm::vec2 min,glm::vec2 max);
 	InventorySlot();
-	void setup(glm::vec2 min, glm::vec2 max, glm::vec3 _color);
+	void setup(Item* _item, unsigned int _count, glm::vec2 min,glm::vec2 max);
+	void setItem(Item* item, unsigned int _count);
 	static void initialize(const char* path);
-	void draw(Shader& shader);
-	void setItem(unsigned int _itemID, int _count);
+	void draw(Shader& shader, float mouseX, float mouseY);
+	
 
 private:
-	static unsigned int VAO, VBO, EBO,textureID;
+	static unsigned int VAO, VBO, EBO,slotTexture;
 	static unsigned int indeces[];
 	static float vertices[];
+	bool hovers(float mouseX, float mouseY);
 
 };
 
