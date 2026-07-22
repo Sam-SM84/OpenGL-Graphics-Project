@@ -47,6 +47,8 @@ const float nearDistance = 30.0f;
 
 bool inventory = false;
 
+Item* usingItem;
+
 vector<Object> objects;
 vector<Object> visibleObjects;
 
@@ -157,16 +159,19 @@ int main()
 
 
                                             // Inventory setup
+    stbi_set_flip_vertically_on_load(true);
     InventorySlot::initialize("Images/slot1.png");
 
     Item sth(1, "Images/redx.png");
     Item null(0, "Images/redx.png");
+    Item wand(2, "Images/slot_wand.png");
     for (int i = 0; i < 5; i++)
     {
-        player.bag[i].setup(&null, 1, glm::vec2(200 + 75 * i, 200), glm::vec2(250 + 75 * i, 250));
+        player.bag[i].setup(&null, 1, glm::vec2(200 + 100 * i, 200), glm::vec2(250 + 100 * i, 250));
     }
 
     player.bag[2].setItem(&sth, 1);
+    player.bag[0].setItem(&wand, 1);
 
                                             // Main loop
     while (!glfwWindowShouldClose(window))
