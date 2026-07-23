@@ -48,6 +48,7 @@ const float nearDistance = 30.0f;
 bool inventory = false;
 
 Item* usingItem;
+int usingItemIndex = 0;
 
 vector<Object> objects;
 vector<Object> visibleObjects;
@@ -160,17 +161,17 @@ int main()
 
                                             // Inventory setup
     stbi_set_flip_vertically_on_load(true);
-    InventorySlot::initialize("Images/slot1.png");
+    InventorySlot::initialize("Images/slot1.png", "Images/slot_used.png");
 
-    Item sth(1, "Images/redx.png");
-    Item null(0, "Images/redx.png");
-    Item wand(2, "Images/slot_wand.png");
+    Item sth(1,"test subject", "Images/redx.png");
+    Item null(0,"null", "Images/redx.png");
+    Item wand(2,"magic wand", "Images/magic_wand.png");
     for (int i = 0; i < 5; i++)
     {
         player.bag[i].setup(&null, 1, glm::vec2(200 + 100 * i, 200), glm::vec2(250 + 100 * i, 250));
     }
 
-    player.bag[2].setItem(&sth, 1);
+    player.bag[2].setItem(&wand, 1);
     player.bag[0].setItem(&wand, 1);
 
                                             // Main loop
@@ -353,6 +354,31 @@ void displayTitle(GLFWwindow* window, float dt)
 
 void mouseFunc(GLFWwindow* window, int button, int action, int mods)
 {
+    if (inventory)
+    {
+        if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+        {
+            for (int i = 0; i < 5; i++)
+            {
+                if (player.bag[i].hovers(lastMouseX, SCR_HEIGHT - lastMouseY))
+                {
+                    usingItem = player.bag[i].item;
+                    player.bag[usingItemIndex].selected = false;
+                    usingItemIndex = i;
+                    player.bag[i].selected = !player.bag[i].selected;
+                    break;
+                }    
+            }
+        }
+    }
+
+    else
+    {
+        if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && usingItem != nullptr)
+        {
+            cout << " Using item : " << usingItem->name << endl;
+        }
+    }
 
 }
 
