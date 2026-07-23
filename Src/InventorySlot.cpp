@@ -4,6 +4,7 @@ unsigned int InventorySlot::VAO = 0;
 unsigned int InventorySlot::VBO = 0;
 unsigned int InventorySlot::EBO = 0;
 unsigned int InventorySlot::slotTexture = 0;
+unsigned int InventorySlot::slotUsed = 0;
 
 unsigned int InventorySlot::indeces[]
 {
@@ -24,11 +25,12 @@ InventorySlot::InventorySlot()
 {
     item = nullptr;
     count = 0;
-    minPos = glm::vec2(0,0);
-    maxPos = glm::vec2(0,0);
+    minPos = glm::vec2(0, 0);
+    maxPos = glm::vec2(0, 0);
+    selected = false;
 }
 
-void InventorySlot::initialize(const char* path)
+void InventorySlot::initialize(const char* path,const char* usedPath)
 {
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -36,7 +38,6 @@ void InventorySlot::initialize(const char* path)
 
     glBindVertexArray(VAO);
 
-    // VBO <- Array Buffer (data)
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
@@ -83,9 +84,42 @@ void InventorySlot::initialize(const char* path)
         std::cout << "Slot texture failed to load at path: " << path << std::endl;
         stbi_image_free(data);
     }
+
+
+    glGenTextures(1, &slotUsed);
+
+    //int width, height, nrChannels;
+    data = stbi_load(usedPath, &width, &height, &nrChannels, 0);
+
+    if (data)
+    {
+        GLenum format;
+        if (nrChannels == 1) format = GL_RED;
+        if (nrChannels == 3) format = GL_RGB;
+        if (nrChannels == 4) format = GL_RGBA;
+
+        glBindTexture(GL_TEXTURE_2D, slotUsed);
+        //glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        stbi_image_free(data);
+    }
+
+    else
+    {
+        std::cout << "Slot used failed to load at path: " << path << std::endl;
+        stbi_image_free(data);
+    }
 }
 
-void InventorySlot::setup(Item* _item,unsigned int _count,glm::vec2 min, glm::vec2 max)
+void InventorySlot::setup(Item* _item, unsigned int _count, glm::vec2 min, glm::vec2 max)
 {
     item = _item;
     count = _count;
@@ -100,12 +134,12 @@ void InventorySlot::setItem(Item* _item, unsigned int _count)
 }
 
 
-void InventorySlot::draw(Shader& shader,float mouseX,float mouseY)
+void InventorySlot::draw(Shader& shader, float mouseX, float mouseY)
 {
     float scale = hovers(mouseX, mouseY) ? 3 : 1;
 
     glm::mat4 model(1.0f);
-    model = glm::translate(model, glm::vec3(glm::vec2((maxPos + minPos) / 2.0f), 0.0f));  
+    model = glm::translate(model, glm::vec3(glm::vec2((maxPos + minPos) / 2.0f), 0.0f));
     model = glm::scale(model, glm::vec3((maxPos.x - minPos.x) * scale, (maxPos.y - minPos.y) * scale, 1));
     model = glm::translate(model, glm::vec3(-0.5, -0.5, -0.5));
 
@@ -113,23 +147,39 @@ void InventorySlot::draw(Shader& shader,float mouseX,float mouseY)
     shader.setInt("texture1", 0);
     shader.setInt("texture2", 1);
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, slotTexture);
+    unsigned int texture = selected ? slotUsed : slotTexture;
 
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, slotTexture);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
     if (item != nullptr && item->ID != 0)
     {
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, item->itemTexture);
     }
 
+    else
+    {
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, texture);
+    }
+
     glDisable(GL_DEPTH_TEST);
-    glActiveTexture(GL_TEXTURE0);
     
+    //glActiveTexture(GL_TEXTURE1);
+
     glBindVertexArray(VAO);
-    glBindTexture(GL_TEXTURE_2D, slotTexture);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+    if (item != nullptr && item->ID != 0)
+    {
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, item->itemTexture);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    }
+
 
     glBindVertexArray(0);
     glEnable(GL_DEPTH_TEST);
@@ -141,5 +191,5 @@ bool InventorySlot::hovers(float mouseX, float mouseY)
         (
             mouseX > minPos.x && mouseX < maxPos.x&&
             mouseY > minPos.y && mouseY < maxPos.y
-            );
+        );
 }
