@@ -1,6 +1,6 @@
 #pragma once
 
-struct Plane 
+struct Plane
 {
     glm::vec3 direction;        // which way is the plane facing -> n
     float distance;             // distance from players POV
@@ -11,23 +11,23 @@ struct Plane
         direction /= length;
         distance /= length;
     }
-                                // linear algebra formula
-    float planeDistance(const glm::vec3& p) 
+    // linear algebra formula
+    float planeDistance(const glm::vec3& p)
     {
         return glm::dot(direction, p) + distance;
     }
 };
 
-struct Frustum 
+struct Frustum
 {
-    Plane planes[6]; 
+    Plane planes[6];
 
-    enum 
+    enum
     {
         LEFT = 0, RIGHT, BOTTOM, TOP, NEAR, FAR
     };
-                                // another linear algebra formula
-    void extract(const glm::mat4& vp) 
+    // another linear algebra formula
+    void extract(const glm::mat4& vp)
     {
         planes[LEFT].direction.x = vp[0][3] + vp[0][0];
         planes[LEFT].direction.y = vp[1][3] + vp[1][0];
@@ -63,14 +63,27 @@ struct Frustum
             planes[i].normalize();
     }
 
-    bool isSphereVisible(const glm::vec3& center, float radius)  
+    bool isSphereVisible(const glm::vec3& center, float radius)
     {
-        for (int i = 0; i < 6; i++) 
+        for (int i = 0; i < 6; i++)
         {
             float dist = planes[i].planeDistance(center);
             if (dist < -radius)             // |dist| < radius
-                return false; 
+                return false;
         }
         return true;
     }
 };
+
+struct LODmodel
+{
+    Model* far;
+    Model* near;
+};
+
+void backFaceCulling()
+{
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+}
+
