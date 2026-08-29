@@ -12,7 +12,7 @@
 #include "Object.h"
 #include "Skybox.h"
 #include "InventorySlot.h"
-#include "Frustum.h"
+#include "Optimization.h"
 
 void reshapeScreen(GLFWwindow* window, int width, int height);
 void mouseMotion(GLFWwindow* window, double xpos, double ypos);
@@ -81,23 +81,26 @@ int main()
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-    // glad: load all OpenGL function pointers
-    // ---------------------------------------
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         std::cout << "Failed to initialize GLAD" << std::endl;
         return -1;
     }
     stbi_set_flip_vertically_on_load(false);
+
+    // Updates depth buffer
     glEnable(GL_DEPTH_TEST);
+
+    // Useful for transparency
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    backFaceCulling();
 
                                             // Shaders
     Shader modelShader("shaders/model_loading.vs", "shaders/model_loading.fs");
     Shader skyboxShader("shaders/skybox.vs", "shaders/skybox.fs");
     Shader gridShader("shaders/gridShader.vs", "shaders/gridShader.fs");
-    Shader crosshairShader("shaders/gridShader.vs", "shaders/crosshairShader.fs");
 
                                             // Skybox Initialization
     vector<string> faces
@@ -139,14 +142,12 @@ int main()
     LODmodel rock{ &rock_,&rock_ };
 
                                             // Adding Objects into the world
+    /*
     for (int i = 0; i < 10; i++)
         for (int j = 0; j < 10; j++)
         {
             objects.push_back(Object(&grassPath, { 0.0f + (float)i * 15,-1.0f,0.0f + (float)j * 15 }, { 0.05f,0.01f,0.05f }, { -90.0f,0.0f,0.0f}, false, false));
         }
-
-    Object g(&grassPath, { 0.0f ,5.0f,0.0f }, { 0.05f,0.01f,0.05f }, { -90.0f,0.0f,0.0f }, false, false);
-    //std::cout << "Patch radius : " << g.radius;
 
     for (int i = 0; i < 25; i++)
         objects.push_back(Object(&tree, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 1.0f,getRandom1f(0.8f,1.4f),1.0f }, { 0.0f,getRandom1f(0.0f,180.0f),0.0f }, false, true));
@@ -162,7 +163,8 @@ int main()
 
     for (int j = 0; j < 50; j++)
         objects.push_back(Object(&rock, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 0.1f,0.1f,0.1f }, { 0.0f,0.0f,0.0f }, false, true));
-
+    */
+    objects.push_back(Object(&grassPath, { 0,0,0 }, 1.0f, { -90.0f,0.0f,0.0f }, false, false));
 
                                             // Inventory setup
     stbi_set_flip_vertically_on_load(true);
@@ -201,9 +203,11 @@ int main()
 
             projection = glm::perspective(glm::radians(FOV), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, renderDistance);
             view = glm::lookAt(player.Position,
-                { player.Position.x + player.direction.x * cos(glm::radians(pitch)),
-                player.Position.y + player.direction.y,
-                player.Position.z + player.direction.z * cos(glm::radians(pitch)) }
+                { 
+                    player.Position.x + player.direction.x * cos(glm::radians(pitch)),
+                    player.Position.y + player.direction.y,
+                    player.Position.z + player.direction.z * cos(glm::radians(pitch)) 
+                }
             , { 0.0f,1.0f,0.0f });
             modelShader.setMat4("projection", projection);
             modelShader.setMat4("view", view);
