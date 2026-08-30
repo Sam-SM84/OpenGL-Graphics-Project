@@ -13,6 +13,7 @@
 #include "Skybox.h"
 #include "InventorySlot.h"
 #include "Optimization.h"
+#include "Crosshair.h"
 
 void reshapeScreen(GLFWwindow* window, int width, int height);
 void mouseMotion(GLFWwindow* window, double xpos, double ypos);
@@ -95,12 +96,13 @@ int main()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    backFaceCulling();
+    //backFaceCulling();
 
                                             // Shaders
     Shader modelShader("shaders/model_loading.vs", "shaders/model_loading.fs");
     Shader skyboxShader("shaders/skybox.vs", "shaders/skybox.fs");
     Shader gridShader("shaders/gridShader.vs", "shaders/gridShader.fs");
+    Shader crosshairShader("shaders/crosshair.vs", "shaders/crosshair.fs");
 
                                             // Skybox Initialization
     vector<string> faces
@@ -116,6 +118,11 @@ int main()
     Skybox skybox(faces);
     skyboxShader.use();
     skyboxShader.setInt("skybox", 0);
+
+                                            // Crosshair
+    Crosshair crosshair;
+    crosshair.load("Images/yellow_circle.png", SCR_WIDTH, SCR_HEIGHT,32.0f);
+
 
                                             // Initializing Models
     Model grassPath_near("Models/grass/10450_Rectangular_Grass_Patch_v1_iterations-2.obj");
@@ -142,7 +149,7 @@ int main()
     LODmodel rock{ &rock_,&rock_ };
 
                                             // Adding Objects into the world
-    /*
+
     for (int i = 0; i < 10; i++)
         for (int j = 0; j < 10; j++)
         {
@@ -150,7 +157,7 @@ int main()
         }
 
     for (int i = 0; i < 25; i++)
-        objects.push_back(Object(&tree, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 1.0f,getRandom1f(0.8f,1.4f),1.0f }, { 0.0f,getRandom1f(0.0f,180.0f),0.0f }, false, true));
+        objects.push_back(Object(&tree, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 1.0f,getRandom1f(0.8f,2.4f),1.0f }, { 0.0f,getRandom1f(0.0f,180.0f),0.0f }, true, true));
 
     for (int i = 0; i < 25; i++)
         objects.push_back(Object(&crocus, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 0.015f,0.015f,0.01f }, { -90.0f,0.0f,0.0f }, true, true));
@@ -163,8 +170,8 @@ int main()
 
     for (int j = 0; j < 50; j++)
         objects.push_back(Object(&rock, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 0.1f,0.1f,0.1f }, { 0.0f,0.0f,0.0f }, false, true));
-    */
-    objects.push_back(Object(&grassPath, { 0,0,0 }, 1.0f, { -90.0f,0.0f,0.0f }, false, false));
+
+
 
                                             // Inventory setup
     stbi_set_flip_vertically_on_load(true);
@@ -220,7 +227,10 @@ int main()
             visibleObjects.clear();
             for (auto obj = objects.begin(); obj != objects.end(); obj++)
             {
-                if (frustum.isSphereVisible(obj->modelPosition, obj->radius)) visibleObjects.push_back(*obj);
+                bool visible = false;
+                if (frustum.isSphereVisible(obj->modelPosition, obj->radius)) visible = true;
+
+                if (visible) visibleObjects.push_back(*obj);
             }
             /*
             float limitAngle = glm::cos(glm::radians(FOV));
@@ -254,9 +264,19 @@ int main()
             // Level Of Detail Optimization
             for (auto obj = visibleObjects.begin(); obj != visibleObjects.end(); obj++)
             {
-                
                 obj->drawObject(modelShader, glm::distance(player.Position, obj->modelPosition) < nearDistance);
             }
+
+            skybox.drawSkybox(skyboxShader, glm::mat4(glm::mat3(view)), projection);
+
+            glm::mat4 crosshairProjection = glm::ortho(0.0f, (float)SCR_WIDTH, (float)SCR_HEIGHT, 0.0f);
+            crosshairShader.use();
+
+            crosshairShader.setMat4("projection", crosshairProjection);
+            crosshairShader.setInt("texture1", 0);          // 0 -> GL_TEXTURE0
+            crosshairShader.setFloat("size", crosshair.size);
+            crosshairShader.setVec2("position", crosshair.x, crosshair.y);
+            crosshair.draw();
         }
 
         else
@@ -278,7 +298,7 @@ int main()
 
         if (wait(0.5f, dt)) displayTitle(window, dt);
 
-        skybox.drawSkybox(skyboxShader, glm::mat4(glm::mat3(view)), projection);
+        
 
         glfwPollEvents();
         glfwSwapBuffers(window);
@@ -317,10 +337,8 @@ void movement_and_IO(GLFWwindow* window, float dt)
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
             futurePosition += glm::vec3(player.direction.z * cameraSpeed * -1, 0, player.direction.x * cameraSpeed);
 
-        
-
-
         player.moveFigure({ futurePosition.x,0,futurePosition.z });
+        
         if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !player.onAir) player.jump();
     }
 }
