@@ -1,17 +1,19 @@
 #pragma once
 
-struct Crosshair
+struct HUD
 {
 	float x, y;
 	unsigned int texture;
     unsigned int VAO;
     float size;
+    glm::vec3 color;
 
-	void load(const char* path,float w,float h,float _size)
+	void load(const char* path,float w,float h,float _size,glm::vec3 _color)
 	{
         size = _size;
-        x = w / 2.0f - size / 2.0f;
-        y = h / 2.0f - size / 2.0f;
+        x = w;
+        y = h;
+        color = _color;
 
         float vertices[] =
         {
@@ -91,5 +93,14 @@ struct Crosshair
 
         glBindVertexArray(0);
         glEnable(GL_DEPTH_TEST);
+    }
+
+    void setShader(Shader& shader,glm::mat4 projection)
+    {
+        shader.setMat4("projection", projection);
+        shader.setInt("texture", 0);        // 0 -> GL_TEXTURE0
+        shader.setFloat("size", size);
+        shader.setVec2("position", x, y);
+        shader.setVec3("color", color);
     }
 };
