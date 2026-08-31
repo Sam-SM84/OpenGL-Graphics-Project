@@ -13,7 +13,7 @@
 #include "Skybox.h"
 #include "InventorySlot.h"
 #include "Optimization.h"
-#include "Crosshair.h"
+#include "HUD.h"
 
 void reshapeScreen(GLFWwindow* window, int width, int height);
 void mouseMotion(GLFWwindow* window, double xpos, double ypos);
@@ -23,6 +23,7 @@ float getRandom1f(float min, float max);
 void displayTitle(GLFWwindow* window, float dt);
 void mouseFunc(GLFWwindow* window, int button, int action, int mods);
 bool wait(float time, float dt);
+//Object* targetObject();
 
 unsigned int SCR_WIDTH = 800;
 unsigned int SCR_HEIGHT = 600;
@@ -102,7 +103,7 @@ int main()
     Shader modelShader("shaders/model_loading.vs", "shaders/model_loading.fs");
     Shader skyboxShader("shaders/skybox.vs", "shaders/skybox.fs");
     Shader gridShader("shaders/gridShader.vs", "shaders/gridShader.fs");
-    Shader crosshairShader("shaders/crosshair.vs", "shaders/crosshair.fs");
+    Shader HUDshader("shaders/HUD.vs", "shaders/HUD.fs");
 
                                             // Skybox Initialization
     vector<string> faces
@@ -120,8 +121,8 @@ int main()
     skyboxShader.setInt("skybox", 0);
 
                                             // Crosshair
-    Crosshair crosshair;
-    crosshair.load("Images/yellow_circle.png", SCR_WIDTH, SCR_HEIGHT,32.0f);
+    HUD crosshair;
+    crosshair.load("Images/yellow_circle.png", (SCR_WIDTH / 2.0f) - 16.0f, (SCR_HEIGHT / 2.0f) - 16.0f, 32.0f,glm::vec3(1.0f,0.0f,0.0f));
 
 
                                             // Initializing Models
@@ -174,7 +175,7 @@ int main()
 
 
                                             // Inventory setup
-    stbi_set_flip_vertically_on_load(true);
+    stbi_set_flip_vertically_on_load(false);
     InventorySlot::initialize("Images/slot1.png", "Images/slot_used.png");
 
     Item sth(1,"test subject", "Images/redx.png");
@@ -204,6 +205,7 @@ int main()
 
         if (!inventory)
         {
+            stbi_set_flip_vertically_on_load(false);
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
             modelShader.use();
             
@@ -269,30 +271,40 @@ int main()
 
             skybox.drawSkybox(skyboxShader, glm::mat4(glm::mat3(view)), projection);
 
-            glm::mat4 crosshairProjection = glm::ortho(0.0f, (float)SCR_WIDTH, (float)SCR_HEIGHT, 0.0f);
-            crosshairShader.use();
+            glm::mat4 HUDProjection = glm::ortho(0.0f, (float)SCR_WIDTH, (float)SCR_HEIGHT, 0.0f);
+            HUDshader.use();
 
-            crosshairShader.setMat4("projection", crosshairProjection);
-            crosshairShader.setInt("texture1", 0);          // 0 -> GL_TEXTURE0
-            crosshairShader.setFloat("size", crosshair.size);
-            crosshairShader.setVec2("position", crosshair.x, crosshair.y);
+            crosshair.setShader(HUDshader, HUDProjection);
             crosshair.draw();
+
+            
+            string text = "AAA";
+            const char* charList = text.c_str();
+            for (int i = 0; i < text.length(); i++)
+            {
+                HUD letter;
+                string path = "Images/" + string(1,charList[i]) + ".png";
+                letter.load(path.c_str(), 400 + (i * 20), 400, 20,glm::vec3(0.0f,1.0f,0.0f));
+                letter.setShader(HUDshader, HUDProjection);
+                letter.draw();
+            }
         }
 
         else
         {
+            stbi_set_flip_vertically_on_load(true);
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
             GLFWcursor* cursor = glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
             glfwSetCursor(window, cursor);
 
             gridShader.use();
 
-            projection = glm::ortho(0.0f, (float)SCR_WIDTH, 0.0f, (float)SCR_HEIGHT);
+            projection = glm::ortho(0.0f, (float)SCR_WIDTH, (float)SCR_HEIGHT, 0.0f);
             gridShader.setMat4("projection", projection);
 
             for (int i = 0; i < 5; i++)
             {
-                player.bag[i].draw(gridShader, lastMouseX, SCR_HEIGHT - lastMouseY);
+                player.bag[i].draw(gridShader, lastMouseX, lastMouseY);
             }
         }
 
