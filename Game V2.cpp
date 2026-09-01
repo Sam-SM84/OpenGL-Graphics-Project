@@ -23,7 +23,7 @@ float getRandom1f(float min, float max);
 void displayTitle(GLFWwindow* window, float dt);
 void mouseFunc(GLFWwindow* window, int button, int action, int mods);
 bool wait(float time, float dt);
-//Object* targetObject();
+Object* targetObject();
 
 unsigned int SCR_WIDTH = 800;
 unsigned int SCR_HEIGHT = 600;
@@ -52,6 +52,8 @@ bool inventory = false;
 
 Item* usingItem;
 int usingItemIndex = 0;
+
+Object* target = nullptr;
 
 vector<Object> objects;
 vector<Object> visibleObjects;
@@ -103,7 +105,8 @@ int main()
     Shader modelShader("shaders/model_loading.vs", "shaders/model_loading.fs");
     Shader skyboxShader("shaders/skybox.vs", "shaders/skybox.fs");
     Shader gridShader("shaders/gridShader.vs", "shaders/gridShader.fs");
-    Shader HUDshader("shaders/HUD.vs", "shaders/HUD.fs");
+    Shader HUD_shapeShader("shaders/HUD_shape.vs", "shaders/HUD_shape.fs");
+    Shader HUD_textShader("shaders/HUD_text.vs", "shaders/HUD_text.fs");
 
                                             // Skybox Initialization
     vector<string> faces
@@ -121,8 +124,21 @@ int main()
     skyboxShader.setInt("skybox", 0);
 
                                             // Crosshair
-    HUD crosshair;
-    crosshair.load("Images/yellow_circle.png", (SCR_WIDTH / 2.0f) - 16.0f, (SCR_HEIGHT / 2.0f) - 16.0f, 32.0f,glm::vec3(1.0f,0.0f,0.0f));
+    HUD_shape crosshair;
+    crosshair.load("Images/yellow_circle.png", (SCR_WIDTH / 2.0f) - 16.0f, (SCR_HEIGHT / 2.0f) - 16.0f, 32.0f);
+
+            
+                                            // Labels
+    HUD_text position;
+    string label = to_string(player.Position.x) + " , " + to_string(player.Position.y) + " , " + to_string(player.Position.z);
+    position.load(20, 20, 1, { 0.0f,1.0f,0.0f }, label);
+    position.initialize("Images/Arial.ttf");
+    position.bind();
+
+    HUD_text pickupLabel;
+    pickupLabel.load(400, 350, 0.5, { 0.75f,0.75f,0.0f }, "Right click to pick up item");
+    pickupLabel.initialize("Images/Arial.ttf");
+    pickupLabel.bind();
 
 
                                             // Initializing Models
@@ -158,7 +174,7 @@ int main()
         }
 
     for (int i = 0; i < 25; i++)
-        objects.push_back(Object(&tree, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 1.0f,getRandom1f(0.8f,2.4f),1.0f }, { 0.0f,getRandom1f(0.0f,180.0f),0.0f }, true, true));
+        objects.push_back(Object(&tree, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 1.0f,getRandom1f(0.8f,2.4f),1.0f }, { 0.0f,getRandom1f(0.0f,180.0f),0.0f }, false, true));
 
     for (int i = 0; i < 25; i++)
         objects.push_back(Object(&crocus, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 0.015f,0.015f,0.01f }, { -90.0f,0.0f,0.0f }, true, true));
@@ -175,7 +191,7 @@ int main()
 
 
                                             // Inventory setup
-    stbi_set_flip_vertically_on_load(false);
+    stbi_set_flip_vertically_on_load(true);
     InventorySlot::initialize("Images/slot1.png", "Images/slot_used.png");
 
     Item sth(1,"test subject", "Images/redx.png");
@@ -205,7 +221,6 @@ int main()
 
         if (!inventory)
         {
-            stbi_set_flip_vertically_on_load(false);
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
             modelShader.use();
             
@@ -260,9 +275,6 @@ int main()
             }
             */
             
-
-            
-
             // Level Of Detail Optimization
             for (auto obj = visibleObjects.begin(); obj != visibleObjects.end(); obj++)
             {
@@ -272,45 +284,40 @@ int main()
             skybox.drawSkybox(skyboxShader, glm::mat4(glm::mat3(view)), projection);
 
             glm::mat4 HUDProjection = glm::ortho(0.0f, (float)SCR_WIDTH, (float)SCR_HEIGHT, 0.0f);
-            HUDshader.use();
+            HUD_shapeShader.use();
 
-            crosshair.setShader(HUDshader, HUDProjection);
+            crosshair.setShader(HUD_shapeShader, HUDProjection);
             crosshair.draw();
 
-            
-            string text = "AAA";
-            const char* charList = text.c_str();
-            for (int i = 0; i < text.length(); i++)
+            string label = to_string((short)player.Position.x) + " , " + to_string((short)player.Position.y) + " , " + to_string((short)player.Position.z);
+            position.load(30, 30, 0.5, { 0.0f,1.0f,0.0f }, label);
+            position.renderText(HUD_textShader, HUDProjection);
+
+            target = targetObject();
+            if (target != nullptr)
             {
-                HUD letter;
-                string path = "Images/" + string(1,charList[i]) + ".png";
-                letter.load(path.c_str(), 400 + (i * 20), 400, 20,glm::vec3(0.0f,1.0f,0.0f));
-                letter.setShader(HUDshader, HUDProjection);
-                letter.draw();
+                pickupLabel.renderText(HUD_textShader, HUDProjection);
             }
         }
 
         else
         {
-            stbi_set_flip_vertically_on_load(true);
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
             GLFWcursor* cursor = glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
             glfwSetCursor(window, cursor);
 
             gridShader.use();
 
-            projection = glm::ortho(0.0f, (float)SCR_WIDTH, (float)SCR_HEIGHT, 0.0f);
+            projection = glm::ortho(0.0f, (float)SCR_WIDTH, 0.0f, (float)SCR_HEIGHT);
             gridShader.setMat4("projection", projection);
 
             for (int i = 0; i < 5; i++)
             {
-                player.bag[i].draw(gridShader, lastMouseX, lastMouseY);
+                player.bag[i].draw(gridShader, lastMouseX, SCR_HEIGHT - lastMouseY);
             }
         }
 
         if (wait(0.5f, dt)) displayTitle(window, dt);
-
-        
 
         glfwPollEvents();
         glfwSwapBuffers(window);
@@ -450,8 +457,22 @@ void mouseFunc(GLFWwindow* window, int button, int action, int mods)
         {
             cout << " Using item : " << usingItem->name << endl;
         }
-    }
 
+        else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+        {
+            if (target != nullptr)
+            {
+                for (auto obj = objects.begin(); obj != objects.end(); obj++)
+                {
+                    if (&*obj == target)
+                    {
+                        obj = objects.erase(obj);
+                        break;
+                    }
+                }
+            }
+        }
+    }
 }
 
 bool wait(float timeDuration, float dt)
@@ -467,4 +488,17 @@ bool wait(float timeDuration, float dt)
         duration = 0.0f;
         return true;
     }
+}
+
+Object* targetObject()
+{
+    glm::vec3 lineDirection = player.direction;
+    for (float i = 0.0f; i < 10.0f; i++)
+    {
+        for (auto obj = objects.begin(); obj != objects.end(); obj++)
+        {
+            if (glm::distance((lineDirection * i) + player.Position, obj->modelPosition) < obj->radius && obj->breakable) { return &*obj; }
+        }
+    }
+    return nullptr;
 }
