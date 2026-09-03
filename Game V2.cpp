@@ -59,7 +59,7 @@ int usingItemIndex = 0;
 Object* target = nullptr;
 
 const float MAX_TERRAIN = 50.0f;
-const float STD = 5.0f;
+const float STD = 1.0f;
 
 vector<Object> objects;
 vector<Object> visibleObjects;
@@ -185,7 +185,7 @@ int main()
             objects.push_back(Object(&grassPath, { 0.0f + (float)i * 15,-1.0f,0.0f + (float)j * 15 }, { 0.05f,0.01f,0.05f }, { -90.0f,0.0f,0.0f}, false, false,Item_Object::GRASS_PATH));
         }
     */
-    Mesh terrain = generateTerrain(MAX_TERRAIN, MAX_TERRAIN, 1.0f, 5.0f,"Models/grass/10450_Rectangular_Grass_Patch_v1_Diffuse.jpg");
+    Mesh terrain = generateTerrain(MAX_TERRAIN, MAX_TERRAIN, 1.0f,STD,"Models/grass/10450_Rectangular_Grass_Patch_v1_Diffuse.jpg");
 
     for (int i = 0; i < 25; i++)
     {
