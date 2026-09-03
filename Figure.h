@@ -34,14 +34,14 @@ public:
 
 	void applyGravity(float groundLevel, float gravity, float dt)
 	{
-		if (this->onAir)
+		if (Position.y > groundLevel)
 		{
 			//cout << "works\t";
 			moveFigure({ 0,speed.y * dt * 2.5 ,0 });
 			speed.y -= gravity * dt * 5;
-			if (Position.y <= groundLevel)
+			if (Position.y <= groundLevel + 1)
 			{
-				this->setCoordinate({ Position.x,groundLevel,Position.z });
+				this->setCoordinate({ Position.x,groundLevel + 1,Position.z });
 				this->speed.y = 0;
 				this->onAir = false;
 			}
