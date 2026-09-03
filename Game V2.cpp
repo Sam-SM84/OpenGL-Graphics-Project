@@ -14,12 +14,15 @@
 #include "InventorySlot.h"
 #include "Optimization.h"
 #include "HUD.h"
+#include "Types.h"
+#include "TerrainGenerator.h"
 
 void reshapeScreen(GLFWwindow* window, int width, int height);
 void mouseMotion(GLFWwindow* window, double xpos, double ypos);
 void movement_and_IO(GLFWwindow* window, float dt);
 float getRealTime(float& t1, float& t2);
 float getRandom1f(float min, float max);
+glm::vec3 getRandom3f(float min, float max);
 void displayTitle(GLFWwindow* window, float dt);
 void mouseFunc(GLFWwindow* window, int button, int action, int mods);
 bool wait(float time, float dt);
@@ -40,7 +43,7 @@ const float FOV = 45.0f;
 float t1, t2 = 0;
 float duration = 0;
 
-float groundLevel = 0.0f;
+float groundLevel = 10.0f;
 
 bool pressed = false;
 
@@ -54,6 +57,9 @@ Item* usingItem;
 int usingItemIndex = 0;
 
 Object* target = nullptr;
+
+const float MAX_TERRAIN = 50.0f;
+const float STD = 5.0f;
 
 vector<Object> objects;
 vector<Object> visibleObjects;
@@ -130,15 +136,21 @@ int main()
             
                                             // Labels
     HUD_text position;
-    string label = to_string(player.Position.x) + " , " + to_string(player.Position.y) + " , " + to_string(player.Position.z);
-    position.load(20, 20, 1, { 0.0f,1.0f,0.0f }, label);
-    position.initialize("Images/Arial.ttf");
+    position.initialize("Fonts/Arial.ttf");
     position.bind();
 
     HUD_text pickupLabel;
     pickupLabel.load(400, 350, 0.5, { 0.75f,0.75f,0.0f }, "Right click to pick up item");
-    pickupLabel.initialize("Images/Arial.ttf");
+    pickupLabel.initialize("Fonts/Arial.ttf");
     pickupLabel.bind();
+
+    HUD_text itemLabel;
+    itemLabel.initialize("Fonts/Arial.ttf");
+    itemLabel.bind();
+
+    HUD_text usingItemL;
+    usingItemL.initialize("Fonts/Arial.ttf");
+    usingItemL.bind();
 
 
                                             // Initializing Models
@@ -166,27 +178,32 @@ int main()
     LODmodel rock{ &rock_,&rock_ };
 
                                             // Adding Objects into the world
-
-    for (int i = 0; i < 10; i++)
+    /*
+        for (int i = 0; i < 10; i++)
         for (int j = 0; j < 10; j++)
         {
-            objects.push_back(Object(&grassPath, { 0.0f + (float)i * 15,-1.0f,0.0f + (float)j * 15 }, { 0.05f,0.01f,0.05f }, { -90.0f,0.0f,0.0f}, false, false));
+            objects.push_back(Object(&grassPath, { 0.0f + (float)i * 15,-1.0f,0.0f + (float)j * 15 }, { 0.05f,0.01f,0.05f }, { -90.0f,0.0f,0.0f}, false, false,Item_Object::GRASS_PATH));
         }
+    */
+    Mesh terrain = generateTerrain(MAX_TERRAIN, MAX_TERRAIN, 1.0f, 5.0f,"Models/grass/10450_Rectangular_Grass_Patch_v1_Diffuse.jpg");
 
     for (int i = 0; i < 25; i++)
-        objects.push_back(Object(&tree, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 1.0f,getRandom1f(0.8f,2.4f),1.0f }, { 0.0f,getRandom1f(0.0f,180.0f),0.0f }, false, true));
+    {
+        objects.push_back(Object(&tree, getRandom3f(0.0f, MAX_TERRAIN), {1.0f,getRandom1f(0.8f,2.4f),1.0f}, {0.0f,getRandom1f(0.0f,180.0f),0.0f}, false, true, Item_Object::TREE));
+    }
+        
 
     for (int i = 0; i < 25; i++)
-        objects.push_back(Object(&crocus, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 0.015f,0.015f,0.01f }, { -90.0f,0.0f,0.0f }, true, true));
+        objects.push_back(Object(&crocus, getRandom3f(0.0f, MAX_TERRAIN), {0.015f,0.015f,0.01f}, {-90.0f,0.0f,0.0f}, true, true, Item_Object::CROCUS_FLOWER));
 
     for (int i = 0; i < 120; i++)
-        objects.push_back(Object(&tulip, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 0.025f,0.025f,0.025f }, { -90.0f,0.0f,0.0f }, false, true));
+        objects.push_back(Object(&tulip, getRandom3f(0.0f, MAX_TERRAIN), {0.025f,0.025f,0.025f}, {-90.0f,0.0f,0.0f}, true, true, Item_Object::TULIP_FLOWER));
 
     for (int j = 0; j < 50; j++)
-        objects.push_back(Object(&grass, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 3.0f,3.0 * getRandom1f(0.8,1.3),3.0f }, { 0.0f,0.0f,0.0f }, false, true));
+        objects.push_back(Object(&grass, getRandom3f(0.0f, MAX_TERRAIN), {3.0f,3.0 * getRandom1f(0.8,1.3),3.0f}, {0.0f,0.0f,0.0f}, true, true, Item_Object::GRASS));
 
     for (int j = 0; j < 50; j++)
-        objects.push_back(Object(&rock, { getRandom1f(0,50),-0.9f,getRandom1f(0,50) }, { 0.1f,0.1f,0.1f }, { 0.0f,0.0f,0.0f }, false, true));
+        objects.push_back(Object(&rock, getRandom3f(0.0f, MAX_TERRAIN), {0.1f,0.1f,0.1f}, {0.0f,0.0f,0.0f}, true, true, Item_Object::ROCK));
 
 
 
@@ -194,9 +211,9 @@ int main()
     stbi_set_flip_vertically_on_load(true);
     InventorySlot::initialize("Images/slot1.png", "Images/slot_used.png");
 
-    Item sth(1,"test subject", "Images/redx.png");
-    Item null(0,"null", "Images/redx.png");
-    Item wand(2,"magic wand", "Images/magic_wand.png");
+    Item sth(1,"test subject", "Images/redx.png",Item_Object::NAO);
+    Item null(0,"null", "Images/redx.png",Item_Object::NAO);
+    Item wand(2,"magic wand", "Images/magic_wand.png",Item_Object::NAO);
     for (int i = 0; i < 5; i++)
     {
         player.bag[i].setup(&null, 1, glm::vec2(200 + 100 * i, 200), glm::vec2(250 + 100 * i, 250));
@@ -212,6 +229,7 @@ int main()
     {
         float dt = getRealTime(t1, t2);
         movement_and_IO(window, dt);
+        groundLevel = noise_2D(player.Position.x, player.Position.z, STD);
         player.applyGravity(groundLevel, 0.98, dt);
 
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
@@ -236,7 +254,10 @@ int main()
             modelShader.setMat4("projection", projection);
             modelShader.setMat4("view", view);
 
-            // Frustum culling optimization
+            
+
+            
+                        // Frustum culling optimization
             glm::mat4 view_projection = projection * view;
             Frustum frustum;
             frustum.extract(view_projection);
@@ -249,6 +270,8 @@ int main()
 
                 if (visible) visibleObjects.push_back(*obj);
             }
+            
+
             /*
             float limitAngle = glm::cos(glm::radians(FOV));
             visibleObjects.clear();
@@ -276,10 +299,17 @@ int main()
             */
             
             // Level Of Detail Optimization
-            for (auto obj = visibleObjects.begin(); obj != visibleObjects.end(); obj++)
+            for (auto obj = objects.begin(); obj != objects.end(); obj++)
             {
                 obj->drawObject(modelShader, glm::distance(player.Position, obj->modelPosition) < nearDistance);
             }
+
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, glm::vec3(0.0f));
+            modelShader.setMat4("model", model);
+            terrain.Draw(modelShader);
+
+            
 
             skybox.drawSkybox(skyboxShader, glm::mat4(glm::mat3(view)), projection);
 
@@ -289,9 +319,16 @@ int main()
             crosshair.setShader(HUD_shapeShader, HUDProjection);
             crosshair.draw();
 
-            string label = to_string((short)player.Position.x) + " , " + to_string((short)player.Position.y) + " , " + to_string((short)player.Position.z);
+            string label = "("+to_string((short)player.Position.x) + "," + to_string((short)player.Position.y) + "," + to_string((short)player.Position.z) + ")";
+            //string label = "abcdefghijklmnopqrstuvwxyz";
             position.load(30, 30, 0.5, { 0.0f,1.0f,0.0f }, label);
             position.renderText(HUD_textShader, HUDProjection);
+
+            if (usingItem != nullptr && usingItem->ID)
+            {
+                usingItemL.load(500, 30, 0.5, { 0.2f,0.2f,1.0f }, "Using item : " + usingItem->name);
+                usingItemL.renderText(HUD_textShader, HUDProjection);
+            }
 
             target = targetObject();
             if (target != nullptr)
@@ -493,7 +530,7 @@ bool wait(float timeDuration, float dt)
 Object* targetObject()
 {
     glm::vec3 lineDirection = player.direction;
-    for (float i = 0.0f; i < 10.0f; i++)
+    for (float i = 0.0f; i < 5.0f; i++)
     {
         for (auto obj = objects.begin(); obj != objects.end(); obj++)
         {
@@ -501,4 +538,12 @@ Object* targetObject()
         }
     }
     return nullptr;
+}
+
+glm::vec3 getRandom3f(float min, float max)
+{
+    float x = getRandom1f(min, max);
+    float z = getRandom1f(min, max);
+    float y = noise_2D(x, z, STD);
+    return glm::vec3(x, y, z);
 }
