@@ -59,10 +59,15 @@ int usingItemIndex = 0;
 Object* target = nullptr;
 
 const float MAX_TERRAIN = 50.0f;
-const float STD = 1.0f;
+const float STD = 2.0f;
+const float REPEAT = 1.0f;
+const char* HEIGHT_MAP_PATH = "Images/heightMap.png";
 
 vector<Object> objects;
 vector<Object> visibleObjects;
+
+int wi, hi, nr;
+unsigned char* di = stbi_load(HEIGHT_MAP_PATH, &wi, &hi, &nr, 0);
 
 int main()
 {
@@ -178,32 +183,28 @@ int main()
     LODmodel rock{ &rock_,&rock_ };
 
                                             // Adding Objects into the world
-    /*
-        for (int i = 0; i < 10; i++)
-        for (int j = 0; j < 10; j++)
-        {
-            objects.push_back(Object(&grassPath, { 0.0f + (float)i * 15,-1.0f,0.0f + (float)j * 15 }, { 0.05f,0.01f,0.05f }, { -90.0f,0.0f,0.0f}, false, false,Item_Object::GRASS_PATH));
-        }
-    */
-    Mesh terrain = generateTerrain(MAX_TERRAIN, MAX_TERRAIN, 1.0f,STD,"Models/grass/10450_Rectangular_Grass_Patch_v1_Diffuse.jpg");
+    //Mesh terrain = generateTerrain_Formula(MAX_TERRAIN, MAX_TERRAIN, REPEAT,STD,"Models/grass/10450_Rectangular_Grass_Patch_v1_Diffuse.jpg");
+    Mesh terrain = generateTerrain_HeightMap(MAX_TERRAIN, MAX_TERRAIN, REPEAT, STD, "Models/grass/10450_Rectangular_Grass_Patch_v1_Diffuse.jpg",HEIGHT_MAP_PATH);
+    
+
 
     for (int i = 0; i < 25; i++)
     {
-        objects.push_back(Object(&tree, getRandom3f(0.0f, MAX_TERRAIN), {1.0f,getRandom1f(0.8f,2.4f),1.0f}, {0.0f,getRandom1f(0.0f,180.0f),0.0f}, false, true, Item_Object::TREE));
+        objects.push_back(Object(&tree, getRandom3f(0.0f, MAX_TERRAIN * REPEAT), {1.0f,getRandom1f(0.8f,2.4f),1.0f}, {0.0f,getRandom1f(0.0f,180.0f),0.0f}, false, true, Item_Object::TREE));
     }
         
 
     for (int i = 0; i < 25; i++)
-        objects.push_back(Object(&crocus, getRandom3f(0.0f, MAX_TERRAIN), {0.015f,0.015f,0.01f}, {-90.0f,0.0f,0.0f}, true, true, Item_Object::CROCUS_FLOWER));
+        objects.push_back(Object(&crocus, getRandom3f(0.0f, MAX_TERRAIN * REPEAT), {0.015f,0.015f,0.01f}, {-90.0f,0.0f,0.0f}, true, true, Item_Object::CROCUS_FLOWER));
 
     for (int i = 0; i < 120; i++)
-        objects.push_back(Object(&tulip, getRandom3f(0.0f, MAX_TERRAIN), {0.025f,0.025f,0.025f}, {-90.0f,0.0f,0.0f}, true, true, Item_Object::TULIP_FLOWER));
+        objects.push_back(Object(&tulip, getRandom3f(0.0f, MAX_TERRAIN * REPEAT), {0.025f,0.025f,0.025f}, {-90.0f,0.0f,0.0f}, true, true, Item_Object::TULIP_FLOWER));
 
     for (int j = 0; j < 50; j++)
-        objects.push_back(Object(&grass, getRandom3f(0.0f, MAX_TERRAIN), {3.0f,3.0 * getRandom1f(0.8,1.3),3.0f}, {0.0f,0.0f,0.0f}, true, true, Item_Object::GRASS));
+        objects.push_back(Object(&grass, getRandom3f(0.0f, MAX_TERRAIN * REPEAT), {3.0f,3.0 * getRandom1f(0.8,1.3),3.0f}, {0.0f,0.0f,0.0f}, true, true, Item_Object::GRASS));
 
     for (int j = 0; j < 50; j++)
-        objects.push_back(Object(&rock, getRandom3f(0.0f, MAX_TERRAIN), {0.1f,0.1f,0.1f}, {0.0f,0.0f,0.0f}, true, true, Item_Object::ROCK));
+        objects.push_back(Object(&rock, getRandom3f(0.0f, MAX_TERRAIN * REPEAT), {0.1f,0.1f,0.1f}, {0.0f,0.0f,0.0f}, true, true, Item_Object::ROCK));
 
 
 
@@ -229,7 +230,8 @@ int main()
     {
         float dt = getRealTime(t1, t2);
         movement_and_IO(window, dt);
-        groundLevel = noise_2D(player.Position.x, player.Position.z, STD);
+        //groundLevel = noise_2D(player.Position.x, player.Position.z, STD,REPEAT);
+        groundLevel = getY_heightMap(player.Position.x, player.Position.z,MAX_TERRAIN, STD, REPEAT,di,wi,hi,nr);
         player.applyGravity(groundLevel, 0.98, dt);
 
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
@@ -544,6 +546,7 @@ glm::vec3 getRandom3f(float min, float max)
 {
     float x = getRandom1f(min, max);
     float z = getRandom1f(min, max);
-    float y = noise_2D(x, z, STD);
+    //float y = noise_2D(x, z, STD, REPEAT);
+    float y = getY_heightMap(x, z, MAX_TERRAIN, STD, REPEAT, di, wi, hi, nr);
     return glm::vec3(x, y, z);
 }
